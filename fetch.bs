@@ -1883,8 +1883,9 @@ evolves over time. That is, not all its fields are available straight away.
 "<code>cors</code>",
 "<code>default</code>",
 "<code>error</code>",
-"<code>opaque</code>", or
-"<code>opaqueredirect</code>".
+"<code>opaque</code>",
+"<code>opaqueredirect</code>", or
+"<code>opaqueauth</code>".
 Unless stated otherwise, it is "<code>default</code>".
 
 <p>A <a for=/>response</a> can have an associated
@@ -2057,6 +2058,15 @@ is a <a>filtered response</a> whose
  <p>This also means that JavaScript APIs, such as
  <a attribute for=Response lt=ok><code>response.ok</code></a>, will return rather useless results.
 </div>
+
+<p>An
+<dfn export id=concept-filtered-response-opaque-auth>opaque-auth filtered response</dfn>
+is a <a>filtered response</a> whose
+<a for=response>type</a> is "<code>opaqueauth</code>",
+<a for=response>status</a> is 0,
+<a for=response>status message</a> is the empty byte sequence,
+<a for=response>header list</a> is empty, and
+<a for=response>body</a> is null.
 
 <p>To <dfn export for=response id=concept-response-clone>clone</dfn> a
 <a for=/>response</a> <var>response</var>, run these steps:
@@ -4500,9 +4510,11 @@ steps. They return a <a for=/>response</a>.
 
  <li><p>Let <var>httpRequest</var> be null.
 
- <li><p>Let <var>response</var> be null.
+ <li><p>Let <var>actualResponse</var> be null.
 
  <li><p>Let <var>storedResponse</var> be null.
+
+ <li><p>Let <var>response</var> be null.
 
  <li><p>Let <var>httpCache</var> be null.
 
@@ -4772,9 +4784,9 @@ steps. They return a <a for=/>response</a>.
         <a for=request>client</a> is non-null, then:
 
         <ol>
-         <li><p>Set <var>response</var> to <var>storedResponse</var>.
+         <li><p>Set <var>actualResponse</var> to <var>storedResponse</var>.
 
-         <li><p>Set <var>response</var>'s <a for=response>cache state</a> to "<code>local</code>".
+         <li><p>Set <var>actualResponse</var>'s <a for=response>cache state</a> to "<code>local</code>".
 
          <li><p>Let <var>revalidateRequest</var> be a <a for=request>clone</a> of
          <var>request</var>.
@@ -4826,8 +4838,8 @@ steps. They return a <a for=/>response</a>.
           "<a href=https://tools.ietf.org/html/rfc7234#section-4.3.4>Sending a Validation Request</a>"
           chapter of <cite>HTTP Caching</cite> [[!HTTP-CACHING]].
 
-         <li><p>Otherwise, set <var>response</var> to <var>storedResponse</var> and set
-         <var>response</var>'s <a for=response>cache state</a> to "<code>local</code>".
+         <li><p>Otherwise, set <var>actualResponse</var> to <var>storedResponse</var> and set
+         <var>actualResponse</var>'s <a for=response>cache state</a> to "<code>local</code>".
         </ol>
       </ol>
     </ol>
@@ -4844,9 +4856,9 @@ steps. They return a <a for=/>response</a>.
    <li><p>Return a <a>network error</a>.
   </ol>
 
- <!-- If response is still null, we require a forwarded request. -->
+ <!-- If actualResponse is still null, we require a forwarded request. -->
  <li>
-  <p>If <var>response</var> is null, then:
+  <p>If <var>actualResponse</var> is null, then:
 
   <ol>
    <li><p>If <var>httpRequest</var>'s <a for=request>cache mode</a> is
@@ -4875,17 +4887,17 @@ steps. They return a <a for=/>response</a>.
 
       <p class="note">This updates the stored response in cache as well.
 
-     <li><p>Set <var>response</var> to <var>storedResponse</var>.
+     <li><p>Set <var>actualResponse</var> to <var>storedResponse</var>.
 
      <li><p><a for=/>Update timing info from stored response</a> given <var>fetchParams</var>'s
-     <a for="fetch params">timing info</a> and <var>response</var>.
+     <a for="fetch params">timing info</a> and <var>actualResponse</var>.
     </ol>
 
    <li>
-    <p>If <var>response</var> is null, then:
+    <p>If <var>actualResponse</var> is null, then:
 
     <ol>
-     <li><p>Set <var>response</var> to <var>forwardResponse</var>.
+     <li><p>Set <var>actualResponse</var> to <var>forwardResponse</var>.
 
      <li>
       <p>Store <var>httpRequest</var> and <var>forwardResponse</var> in <var>httpCache</var>, as per
@@ -4900,14 +4912,14 @@ steps. They return a <a for=/>response</a>.
     </ol>
   </ol>
 
- <li><p>Set <var>response</var>'s <a for=response>URL list</a> to a <a for=list>clone</a> of
+ <li><p>Set <var>actualResponse</var>'s <a for=response>URL list</a> to a <a for=list>clone</a> of
  <var>httpRequest</var>'s <a for=request>URL list</a>.
 
  <li><p>If <var>httpRequest</var>'s <a for=request>header list</a> <a for="header list">contains</a>
- `<code>Range</code>`, then set <var>response</var>'s <a for=response>range-requested flag</a>.
+ `<code>Range</code>`, then set <var>actualResponse</var>'s <a for=response>range-requested flag</a>.
 
  <li>
-  <p>If <var>response</var>'s <a for=response>status</a> is 401, <var>httpRequest</var>'s
+  <p>If <var>actualResponse</var>'s <a for=response>status</a> is 401, <var>httpRequest</var>'s
   <a for=request>response tainting</a> is not "<code>cors</code>", <var>includeCredentials</var> is
   true, and <var>request</var>'s <a for=request>window</a> is an <a>environment settings object</a>,
   then:
@@ -4946,21 +4958,26 @@ steps. They return a <a for=/>response</a>.
 
      <li><p>Let <var>username</var> and <var>password</var> be the result of prompting the end user
      for a username and password, respectively, in <var>request</var>'s
-     <a for=request>window</a>.
+     <a for=request>window</a>. If a username and password cannot be obtained from the end user,
+     set <var>response</var> to an <a>opaque-auth filtered response</a> whose
+     <a for="filtered response">internal response</a> is <var>actualResponse</var>. Otherwise:
 
-     <li><p><a>Set the username</a> given <var>request</var>'s <a for=request>current URL</a> and
-     <var>username</var>.
+     <ol>
+      <li><p><a>Set the username</a> given <var>request</var>'s <a for=request>current URL</a> and
+      <var>username</var>.
 
-     <li><p><a>Set the password</a> given <var>request</var>'s <a for=request>current URL</a> and
-     <var>password</var>.
+      <li><p><a>Set the password</a> given <var>request</var>'s <a for=request>current URL</a> and
+      <var>password</var>.
+
+      <li><p>Set <var>actualResponse</var> to the result of running <a>HTTP-network-or-cache fetch</a> given
+      <var>fetchParams</var> and true.
+     </ol>
     </ol>
 
-   <li><p>Set <var>response</var> to the result of running <a>HTTP-network-or-cache fetch</a> given
-   <var>fetchParams</var> and true.
   </ol>
 
  <li>
-  <p>If <var>response</var>'s <a for=response>status</a> is 407, then:
+  <p>If <var>actualResponse</var>'s <a for=response>status</a> is 407, then:
 
   <ol>
    <li><p>If <var>request</var>'s <a for=request>window</a> is
@@ -4983,13 +5000,20 @@ steps. They return a <a for=/>response</a>.
    <li>
     <p>Prompt the end user as appropriate in <var>request</var>'s
     <a for=request>window</a> and store the result as a
-    <a>proxy-authentication entry</a>. [[!HTTP-AUTH]]
+    <a>proxy-authentication entry</a>. [[!HTTP-AUTH]] If the user cannot be prompted,
+    set <var>response</var> to an <a>opaque-auth filtered response</a> whose
+    <a for="filtered response">internal response</a> is <var>actualResponse</var>. Otherwise:
+
+  <ol>
+   <li><p>Set <var>actualResponse</var> to the result of running <a>HTTP-network-or-cache fetch</a> given
+   <var>fetchParams</var>.
+  </ol>
 
     <p class=note>Remaining details surrounding proxy authentication are defined by HTTP.
 
-   <li><p>Set <var>response</var> to the result of running <a>HTTP-network-or-cache fetch</a> given
-   <var>fetchParams</var>.
   </ol>
+
+ <li>If <var>response</var> is null, set <var>response</var> to <var>actualResponse</var>.
 
  <li>
   <p>If all of the following are true
@@ -7010,7 +7034,7 @@ dictionary ResponseInit {
   HeadersInit headers;
 };
 
-enum ResponseType { "basic", "cors", "default", "error", "opaque", "opaqueredirect" };
+enum ResponseType { "basic", "cors", "default", "error", "opaque", "opaqueredirect", "opaqueauth" };
 </pre>
 
 <p>A {{Response}} object has an associated
